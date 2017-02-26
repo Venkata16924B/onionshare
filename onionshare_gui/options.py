@@ -46,6 +46,11 @@ class Options(QtWidgets.QVBoxLayout):
         self.stealth.setText(strings._("gui_create_stealth", True))
         self.stealth.stateChanged.connect(self.stealth_changed)
 
+        # download
+        self.download_label = QtWidgets.QLabel(strings._('gui_download_share', True))
+        self.download = QtWidgets.QLineEdit()
+        self.download_button = QtWidgets.QPushButton(strings._('gui_download_button', True))
+
         # advanced options group
         self.advanced_group = QtWidgets.QGroupBox(strings._("gui_advanced_options", True))
         self.advanced_group.setCheckable(True)
@@ -59,6 +64,9 @@ class Options(QtWidgets.QVBoxLayout):
         # add the widgets
         self.addWidget(self.close_automatically)
         self.addWidget(self.advanced_group)
+        self.addWidget(self.download_label)
+        self.addWidget(self.download)
+        self.addWidget(self.download_button)
 
     def stay_open_changed(self, state):
         """

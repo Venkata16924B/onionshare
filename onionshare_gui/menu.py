@@ -35,6 +35,7 @@ class Menu(QtWidgets.QMenuBar):
         settings_action.triggered.connect(self.settings)
         quit_action = file_menu.addAction(strings._('gui_menu_quit_action', True))
         quit_action.triggered.connect(self.quit)
+        download_action = file_menu.addAction(strings._('gui_menu_download_action', True))
 
     def settings(self):
         """

@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from stem.control import Controller
 from stem import ProtocolError
 from stem.connection import MissingPassword, UnreadableCookieFile, AuthenticationFailure
+from stem.util import conf
 import os, sys, tempfile, shutil, urllib, platform
 
 from . import socks

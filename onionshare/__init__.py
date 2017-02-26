@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import os, sys, time, argparse, shutil, socket, threading
+import os, sys, time, argparse, re, requests, shutil, socket, threading, humanize
 
 from . import strings, helpers, web, onion
 
@@ -107,6 +107,51 @@ class OnionShare(object):
         if self.onion:
             self.onion.cleanup()
 
+    def download(self, download_url):
+        session = requests.session()
+        session.proxies = {'http':  'socks5://127.0.0.1:9050',
+                   'https': 'socks5://127.0.0.1:9050'}
+
+        try:
+            predl = session.head(download_url + '/download')
+        except requests.exceptions.RequestException as e:
+            print(e)
+            sys.exit()
+
+        filename = re.findall("filename=(.+)", predl.headers['Content-Disposition'])[0]
+        filesize = humanize.naturalsize(predl.headers['Content-Length'])
+        print('Saving ' + filename + ' which is ' + filesize + '...')
+
+        with open(filename, 'wb') as fd:
+            try:
+                download = session.get(download_url + '/download', stream=True)
+            except requests.exceptions.RequestException as e:
+                print(e)
+                sys.exit()
+            if not download.ok:
+                print(strings._("download_failed"))
+                sys.exit()
+            for block in download.iter_content(1024):
+                if block:
+                    fd.write(block)
+        fd.close()
+
+def parse_cmd_args():
+    """
+    Parse command-line arguments.
+    """
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('--local-only', action='store_true', dest='local_only', help=strings._("help_local_only"))
+    parser.add_argument('--stay-open', action='store_true', dest='stay_open', help=strings._("help_stay_open"))
+    parser.add_argument('--transparent', action='store_true', dest='transparent_torification', help=strings._("help_transparent_torification"))
+    parser.add_argument('--stealth', action='store_true', dest='stealth', help=strings._("help_stealth"))
+    parser.add_argument('--download', required=False, type=str, dest='download_url', help=strings._("help_download"))
+    #parser.add_argument('--hidservauth', required=False, type=str, dest='download_hidservauth', help=strings._("help_hidservauth"))
+    parser.add_argument('--debug', action='store_true', dest='debug', help=strings._("help_debug"))
+    parser.add_argument('filename', metavar='filename', nargs='+', help=strings._('help_filename'))
+
+    return parser.parse_args()
 
 def main(cwd=None):
     """
@@ -121,25 +166,26 @@ def main(cwd=None):
         if cwd:
             os.chdir(cwd)
 
-    # parse arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--local-only', action='store_true', dest='local_only', help=strings._("help_local_only"))
-    parser.add_argument('--stay-open', action='store_true', dest='stay_open', help=strings._("help_stay_open"))
-    parser.add_argument('--transparent', action='store_true', dest='transparent_torification', help=strings._("help_transparent_torification"))
-    parser.add_argument('--stealth', action='store_true', dest='stealth', help=strings._("help_stealth"))
-    parser.add_argument('--debug', action='store_true', dest='debug', help=strings._("help_debug"))
-    parser.add_argument('filename', metavar='filename', nargs='+', help=strings._('help_filename'))
-    args = parser.parse_args()
-
-    filenames = args.filename
-    for i in range(len(filenames)):
-        filenames[i] = os.path.abspath(filenames[i])
+    args = parse_cmd_args()
 
     local_only = bool(args.local_only)
     debug = bool(args.debug)
     stay_open = bool(args.stay_open)
     transparent_torification = bool(args.transparent_torification)
     stealth = bool(args.stealth)
+
+    if args.download_url:
+        onion_regexp = 'http:\/\/[a-z2-7]{16}\.onion\/.*'
+        if not re.search(onion_regexp, args.download_url):
+            print(strings._("not_an_onion"))
+            sys.exit()
+        app = OnionShare(debug, local_only, stay_open, transparent_torification, stealth)
+        app.download(args.download_url)
+        sys.exit()
+
+    filenames = args.filename
+    for i in range(len(filenames)):
+        filenames[i] = os.path.abspath(filenames[i])
 
     # validation
     valid = True
@@ -205,3 +251,4 @@ def main(cwd=None):
 
 if __name__ == '__main__':
     main()
+
